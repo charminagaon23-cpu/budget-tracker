@@ -57,6 +57,11 @@ li .t span{display:block;font-size:13px;color:var(--mute);overflow:hidden;text-o
 .chip{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:20px;padding:6px 14px;cursor:pointer;white-space:nowrap}
 .chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
 .chip.new{border-style:dashed;color:var(--mute)}
+[hidden]{display:none!important}
+.authbox{padding-top:14vh;text-align:center}
+.authbox .add{max-width:320px}
+.acct{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:-4px 0 10px}
+.acct .link{margin:0 0 0 auto}
 .bk{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
 textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font:13px/1.4 ui-monospace,monospace;color:var(--ink)}
 .nc{display:flex;gap:6px;margin-top:6px}
@@ -64,12 +69,23 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius
 </style>
 </head>
 <body>
-<main>
+<main id="auth" class="authbox">
+  <h1>Budget Tracker</h1>
+  <p class="sub" style="margin:8px 0 20px">Sign in to keep your wallets private to your account and available on any device.</p>
+  <button class="add" id="signin" type="button">Continue with Google</button>
+  <p class="sub" id="authMsg" role="alert"></p>
+  <div class="panel" id="setup" hidden style="text-align:left;margin-top:20px">
+    <strong>Setup needed</strong>
+    <p class="sub" style="margin:6px 0 0">Open this file and paste your Firebase config into <code>firebaseConfig</code> near the bottom of the script. See SETUP.md for the steps.</p>
+  </div>
+</main>
+<main id="app" hidden>
   <div class="head">
     <h1>Budget Tracker</h1>
     <div><label for="currency" style="display:none">Currency</label><select id="currency" aria-label="Currency of this wallet"></select></div>
   </div>
 
+  <div class="acct"><span id="who" class="sub"></span><span id="status" class="sub" role="status"></span><button class="link" id="out" type="button">Sign out</button></div>
   <div class="wallets" id="wallets" role="group" aria-label="Wallets"></div>
 
   <section class="panel" id="newPanel" hidden>
@@ -148,7 +164,11 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius
   </section>
 </main>
 
-<script>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,onAuthStateChanged,signOut} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {initializeFirestore,getFirestore,persistentLocalCache,doc,getDoc,getDocs,collection,writeBatch} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
 const CATS=["Housing","Food","Transport","Bills","Fun","Health","Shopping","Other"];
 const INCOME_CATS=["Salary","Allowances","Gifts"];
 const SAV_CATS=["Emergency fund","Goal","Retirement","Other savings"];
@@ -157,17 +177,10 @@ const KEY="budget-tracker-v1";
 const $=id=>document.getElementById(id);
 const mk=(name,cur)=>({id:"w"+Date.now()+Math.floor(Math.random()*1e4),name,currency:cur,budget:0,tx:[]});
 
-function load(){
-  try{
-    const p=JSON.parse(localStorage.getItem(KEY));
-    if(p&&Array.isArray(p.wallets)&&p.wallets.length)return p;
-    if(p&&Array.isArray(p.tx)){const w=mk("Main",p.currency||"USD");w.budget=p.budget||0;w.tx=p.tx;return{wallets:[w],active:w.id}}
-  }catch(e){}
-  const w=mk("Main","USD");return{wallets:[w],active:w.id};
-}
-let S=load(),isExp=true,kind="exp",view=new Date();view.setDate(1);
+let S={wallets:[],active:null,cats:[]},isExp=true,kind="exp",view=new Date();view.setDate(1);
 const W=()=>S.wallets.find(w=>w.id===S.active)||S.wallets[0];
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+let saveTimer;
+function save(){clearTimeout(saveTimer);saveTimer=setTimeout(flush,500);setStatus("Saving…")}
 
 const fmt=n=>{try{return new Intl.NumberFormat(undefined,{style:"currency",currency:W().currency,minimumFractionDigits:0,maximumFractionDigits:2}).format(n)}catch(e){return n.toFixed(2)}};
 const ym=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
@@ -278,21 +291,82 @@ function restore(txt){
     msg("Restored "+ws.length+" wallet"+(ws.length>1?"s":"")+".");
   }catch(e){msg("That isn't a Budget Tracker backup. Check the file or text and try again.")}
 }
-$("exp").onclick=async()=>{
-  let dl=null;
-  try{dl=await claude.use("downloads")}catch(e){}
-  if(dl){
-    try{await dl.save({filename:"budget-backup-"+today()+".json",data:dump()});msg("Backup ready to save.");return}
-    catch(e){if(e&&e.code==="declined"){msg("Export cancelled.");return}}
-  }
-  $("bkBox").hidden=false;$("bk").value=dump();$("bkGo").hidden=true;
-  msg("Downloads aren't available here. Copy this text and keep it somewhere safe.");
+$("exp").onclick=()=>{
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([dump()],{type:"application/json"}));
+  a.download="budget-backup-"+today()+".json";
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  msg("Backup downloaded.");
 };
 $("impF").onclick=()=>$("file").click();
 $("file").onchange=async e=>{const f=e.target.files[0];if(!f)return;restore(await f.text());e.target.value=""};
 $("impT").onclick=()=>{$("bkBox").hidden=false;$("bkGo").hidden=false;$("bk").value="";$("bk").focus()};
 $("bkGo").onclick=()=>restore($("bk").value);
-render();
+// ---------- Firebase ----------
+// Paste your own values from Firebase console > Project settings > Your apps (Web).
+const firebaseConfig={
+  apiKey:"AIzaSyDC2FXvs0N0w56euOxq-_Xs6ie_vyfSnTo",
+  authDomain:"budget--tracker-3ddee.firebaseapp.com",
+  projectId:"budget--tracker-3ddee",
+  appId:"1:430011471294:web:0da7057c45162febbd55ef"
+};
+
+let auth,db,uid=null,last={};
+const setStatus=t=>{$("status").textContent=t};
+const show=authed=>{$("auth").hidden=authed;$("app").hidden=!authed};
+
+async function flush(){
+  if(!uid||!db)return;
+  const batch=writeBatch(db),prev={...last};
+  try{
+    S.wallets.forEach(w=>{const j=JSON.stringify(w);if(last[w.id]!==j){batch.set(doc(db,"users",uid,"wallets",w.id),w);last[w.id]=j}});
+    Object.keys(last).forEach(id=>{if(!S.wallets.some(w=>w.id===id)){batch.delete(doc(db,"users",uid,"wallets",id));delete last[id]}});
+    batch.set(doc(db,"users",uid),{cats:S.cats||[],active:S.active||null},{merge:true});
+    await batch.commit();
+    setStatus("Saved");
+  }catch(e){console.error(e);last=prev;setStatus("Couldn't save. Check your connection.")}
+}
+
+async function loadData(user){
+  const [snap,meta]=await Promise.all([getDocs(collection(db,"users",user.uid,"wallets")),getDoc(doc(db,"users",user.uid))]);
+  last={};const ws=[];
+  snap.forEach(d=>{const w=d.data();ws.push(w);last[w.id]=JSON.stringify(w)});
+  const m=meta.exists()?meta.data():{};
+  S={wallets:ws,active:m.active,cats:Array.isArray(m.cats)?m.cats:[]};
+  if(!S.wallets.length){const w=mk("Main","USD");S.wallets=[w];S.active=w.id;save()}
+  if(!S.wallets.some(w=>w.id===S.active))S.active=S.wallets[0].id;
+}
+
+if(firebaseConfig.apiKey.startsWith("YOUR_")){
+  $("signin").hidden=true;$("setup").hidden=false;
+}else{
+  const app=initializeApp(firebaseConfig);
+  auth=getAuth(app);
+  try{db=initializeFirestore(app,{localCache:persistentLocalCache()})}catch(e){db=getFirestore(app)}
+  onAuthStateChanged(auth,async user=>{
+    if(!user){uid=null;S={wallets:[],active:null,cats:[]};show(false);return}
+    try{
+      uid=user.uid;await loadData(user);
+      $("who").textContent=user.displayName||user.email||"";
+      show(true);fillCats();render();setStatus("");
+    }catch(e){
+      console.error(e);uid=null;
+      $("authMsg").textContent="Couldn't load your data. Check your Firestore rules and try again.";
+      show(false);
+    }
+  });
+  $("signin").onclick=async()=>{
+    $("authMsg").textContent="";
+    const p=new GoogleAuthProvider();
+    try{await signInWithPopup(auth,p)}
+    catch(e){
+      if(e.code==="auth/popup-blocked")signInWithRedirect(auth,p);
+      else if(e.code!=="auth/popup-closed-by-user"&&e.code!=="auth/cancelled-popup-request")$("authMsg").textContent="Sign-in failed ("+(e.code||"error")+"). Check that this domain is authorized in Firebase.";
+    }
+  };
+  $("out").onclick=async()=>{clearTimeout(saveTimer);await flush();await signOut(auth)};
+}
 </script>
 </body>
 </html>
