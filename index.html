@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Budget Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef2f5;--surface:#fff;--ink:#14212b;--mute:#62727f;--line:#d7e0e6;--accent:#0f766e;--accent-ink:#fff;--bad:#c2410c;--good:#0f766e;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e161c;--surface:#16222b;--ink:#e6eef3;--mute:#8da0ae;--line:#26363f;--accent:#2dd4bf;--accent-ink:#06211e;--bad:#fb923c;--good:#2dd4bf;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0e161c;--surface:#16222b;--ink:#e6eef3;--mute:#8da0ae;--line:#26363f;--accent:#2dd4bf;--accent-ink:#06211e;--bad:#fb923c;--good:#2dd4bf;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Bricolage Grotesque",system-ui,sans-serif}
+main{max-width:560px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:22px;font-weight:800;margin:0}
+h2{font-size:15px;font-weight:600;margin:0 0 10px;color:var(--mute)}
+.head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
+.head select{width:auto;padding:8px 10px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+.left{font-size:40px;font-weight:800;line-height:1.1;letter-spacing:-.02em;overflow-wrap:anywhere}
+.left.over{color:var(--bad)}
+.sub{color:var(--mute);font-size:14px}
+.bar{height:10px;background:var(--line);border-radius:6px;overflow:hidden;margin:12px 0 6px}
+.bar>i{display:block;height:100%;background:var(--accent);border-radius:6px;transition:width .3s}
+.bar>i.over{background:var(--bad)}
+.stats{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:14px}
+.stats b{display:block;font-size:18px}
+label{display:block;font-size:13px;color:var(--mute);margin-bottom:4px}
+input,select,button{font:inherit;color:var(--ink)}
+input,select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:10px}
+.seg button{flex:1;padding:9px;border:0;background:transparent;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);font-weight:600}
+.add{width:100%;padding:12px;border:0;border-radius:8px;background:var(--accent);color:var(--accent-ink);font-weight:600;cursor:pointer}
+.cat{margin-bottom:10px;font-size:14px}
+.cat div{display:flex;justify-content:space-between}
+.cat .bar{height:6px;margin:4px 0 0}
+ul{list-style:none;margin:0;padding:0}
+li{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+li:first-child{border-top:0}
+li .t{flex:1;min-width:0}
+li .t span{display:block;font-size:13px;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.amt{font-weight:600}.amt.in{color:var(--good)}
+.del{border:0;background:none;color:var(--mute);font-size:20px;cursor:pointer;padding:4px 8px}
+.empty{color:var(--mute);font-size:14px;margin:0}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.top input{width:130px}
+.nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.nav button{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px;cursor:pointer}
+.link{background:none;border:0;color:var(--mute);text-decoration:underline;cursor:pointer;font-size:13px;margin:6px 12px 0 0;padding:0}
+.link:disabled{opacity:.4;cursor:default}
+.wallets{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:6px}
+.chip{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:20px;padding:6px 14px;cursor:pointer;white-space:nowrap}
+.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.chip.new{border-style:dashed;color:var(--mute)}
+.bk{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font:13px/1.4 ui-monospace,monospace;color:var(--ink)}
+.nc{display:flex;gap:6px;margin-top:6px}
+.nc[hidden]{display:none}
+</style>
+</head>
+<body>
+<main>
+  <div class="head">
+    <h1>Budget Tracker</h1>
+    <div><label for="currency" style="display:none">Currency</label><select id="currency" aria-label="Currency of this wallet"></select></div>
+  </div>
+
+  <div class="wallets" id="wallets" role="group" aria-label="Wallets"></div>
+
+  <section class="panel" id="newPanel" hidden>
+    <h2>New wallet</h2>
+    <div class="row">
+      <div><label for="wname">Name</label><input id="wname" type="text" placeholder="e.g. Savings" maxlength="30"></div>
+      <div><label for="wcur">Currency</label><select id="wcur"></select></div>
+    </div>
+    <button class="add" id="create" type="button">Create wallet</button>
+  </section>
+
+  <div class="nav">
+    <button id="prev" aria-label="Previous month">&lsaquo;</button>
+    <strong id="month"></strong>
+    <button id="next" aria-label="Next month">&rsaquo;</button>
+  </div>
+
+  <section class="panel">
+    <div class="top">
+      <div class="sub">Left this month</div>
+      <div><label for="budget" style="display:none">Monthly budget</label><input id="budget" type="number" inputmode="decimal" min="0" placeholder="Monthly budget"></div>
+    </div>
+    <div class="left" id="left">0</div>
+    <div class="bar"><i id="fill" style="width:0"></i></div>
+    <div class="stats">
+      <div><span class="sub">Spent</span><b id="spent">0</b></div>
+      <div><span class="sub">Income</span><b id="income">0</b></div>
+      <div><span class="sub">Saved</span><b id="saved">0</b></div>
+      <div><span class="sub">Total saved</span><b id="totSaved">0</b></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Add transaction</h2>
+    <div class="seg" role="group" aria-label="Type">
+      <button type="button" id="tExp" aria-pressed="true">Expense</button>
+      <button type="button" id="tInc" aria-pressed="false">Income</button>
+      <button type="button" id="tSav" aria-pressed="false">Savings</button>
+    </div>
+    <div class="row">
+      <div><label for="amount">Amount</label><input id="amount" type="number" inputmode="decimal" min="0" step="any" placeholder="0"></div>
+      <div><label for="cat">Category</label><select id="cat"></select><div class="nc" id="newCatWrap" hidden><input id="newCat" type="text" maxlength="24" placeholder="e.g. Pets" aria-label="New category name"><button type="button" class="add" id="saveCat" style="width:auto;padding:8px 14px">Save</button></div></div>
+    </div>
+    <div class="row">
+      <div><label for="note">Note</label><input id="note" type="text" placeholder="Optional"></div>
+      <div><label for="date">Date</label><input id="date" type="date"></div>
+    </div>
+    <button class="add" id="add" type="button">Add transaction</button>
+  </section>
+
+  <section class="panel">
+    <h2>Spending by category</h2>
+    <div id="cats"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Transactions</h2>
+    <ul id="list"></ul>
+    <button class="link" id="reset" type="button">Clear this wallet's transactions</button>
+    <button class="link" id="delWallet" type="button">Delete this wallet</button>
+  </section>
+  <section class="panel">
+    <h2>Backup</h2>
+    <p class="sub" style="margin:0 0 10px">Save all wallets to a file, or restore them on another device. Restoring adds to what you already have.</p>
+    <div class="bk">
+      <button class="chip" id="exp" type="button">Export backup</button>
+      <button class="chip" id="impF" type="button">Import from file</button>
+      <button class="chip" id="impT" type="button">Paste backup text</button>
+    </div>
+    <input id="file" type="file" accept=".json,application/json" hidden>
+    <div id="bkBox" hidden>
+      <textarea id="bk" rows="5" aria-label="Backup text"></textarea>
+      <button class="add" id="bkGo" type="button" style="margin-top:8px">Restore from text</button>
+    </div>
+    <p class="sub" id="bkMsg" role="status" style="margin:8px 0 0"></p>
+  </section>
+</main>
+
+<script>
+const CATS=["Housing","Food","Transport","Bills","Fun","Health","Shopping","Other"];
+const INCOME_CATS=["Salary","Allowances","Gifts"];
+const SAV_CATS=["Emergency fund","Goal","Retirement","Other savings"];
+const CURS=["USD","MMK","EUR","GBP","JPY","INR","CAD","AUD","CHF","CNY","THB","SGD","MXN","BRL","NGN","ZAR","KES","AED","SEK","TRY"];
+const KEY="budget-tracker-v1";
+const $=id=>document.getElementById(id);
+const mk=(name,cur)=>({id:"w"+Date.now()+Math.floor(Math.random()*1e4),name,currency:cur,budget:0,tx:[]});
+
+function load(){
+  try{
+    const p=JSON.parse(localStorage.getItem(KEY));
+    if(p&&Array.isArray(p.wallets)&&p.wallets.length)return p;
+    if(p&&Array.isArray(p.tx)){const w=mk("Main",p.currency||"USD");w.budget=p.budget||0;w.tx=p.tx;return{wallets:[w],active:w.id}}
+  }catch(e){}
+  const w=mk("Main","USD");return{wallets:[w],active:w.id};
+}
+let S=load(),isExp=true,kind="exp",view=new Date();view.setDate(1);
+const W=()=>S.wallets.find(w=>w.id===S.active)||S.wallets[0];
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+
+const fmt=n=>{try{return new Intl.NumberFormat(undefined,{style:"currency",currency:W().currency,minimumFractionDigits:0,maximumFractionDigits:2}).format(n)}catch(e){return n.toFixed(2)}};
+const ym=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+const today=()=>{const d=new Date();return ym(d)+"-"+String(d.getDate()).padStart(2,"0")};
+const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const opts=a=>a.map(c=>`<option>${esc(c)}</option>`).join("");
+
+function fillCats(sel){
+  const list=kind==="exp"?[...CATS,...(S.cats||[])]:kind==="sav"?SAV_CATS:INCOME_CATS;
+  $("cat").innerHTML=opts(list)+(kind==="exp"?'<option value="__new">+ Add new category…</option>':'');
+  if(sel&&list.includes(sel))$("cat").value=sel;
+  $("newCatWrap").hidden=true;
+}
+fillCats();
+$("currency").innerHTML=opts(CURS);
+$("wcur").innerHTML=opts(CURS);
+$("date").value=today();
+
+function arm(btn,fn){
+  if(btn.dataset.armed){fn();return}
+  const old=btn.textContent;btn.dataset.armed=1;btn.textContent="Tap again to confirm";
+  setTimeout(()=>{delete btn.dataset.armed;btn.textContent=old},3000);
+}
+
+function setType(k){kind=k;isExp=k==="exp";[["tExp","exp"],["tInc","inc"],["tSav","sav"]].forEach(([id,v])=>$(id).setAttribute("aria-pressed",v===k));fillCats()}
+$("tExp").onclick=()=>setType("exp");
+$("tInc").onclick=()=>setType("inc");
+$("tSav").onclick=()=>setType("sav");
+$("cat").onchange=()=>{if($("cat").value==="__new"){$("newCatWrap").hidden=false;$("newCat").focus()}else $("newCatWrap").hidden=true};
+$("saveCat").onclick=()=>{
+  const n=$("newCat").value.trim().slice(0,24);if(!n)return;
+  S.cats=S.cats||[];
+  if(![...CATS,...S.cats].some(c=>c.toLowerCase()===n.toLowerCase()))S.cats.push(n);
+  const hit=[...CATS,...S.cats].find(c=>c.toLowerCase()===n.toLowerCase());
+  save();$("newCat").value="";fillCats(hit);
+};
+
+$("budget").oninput=e=>{W().budget=parseFloat(e.target.value)||0;save();render()};
+$("currency").onchange=e=>{W().currency=e.target.value;save();render()};
+$("prev").onclick=()=>{view.setMonth(view.getMonth()-1);render()};
+$("next").onclick=()=>{view.setMonth(view.getMonth()+1);render()};
+
+$("wallets").onclick=e=>{
+  const b=e.target.closest(".chip");if(!b)return;
+  if(b.id==="newW"){const p=$("newPanel");p.hidden=!p.hidden;if(!p.hidden)$("wname").focus();return}
+  S.active=b.dataset.id;save();render();
+};
+$("create").onclick=()=>{
+  const w=mk($("wname").value.trim()||"Wallet "+(S.wallets.length+1),$("wcur").value);
+  S.wallets.push(w);S.active=w.id;$("wname").value="";$("newPanel").hidden=true;save();render();
+};
+$("add").onclick=()=>{
+  const amount=parseFloat($("amount").value);
+  if($("cat").value==="__new"){$("newCat").focus();return}
+  if(!(amount>0)){$("amount").focus();return}
+  const date=$("date").value||today();
+  W().tx.push({id:Date.now()+Math.random(),type:kind,amount,cat:$("cat").value,note:$("note").value.trim(),date});
+  save();$("amount").value="";$("note").value="";
+  view=new Date(date+"T00:00");view.setDate(1);
+  render();
+};
+$("reset").onclick=()=>arm($("reset"),()=>{W().tx=[];save();render()});
+$("delWallet").onclick=()=>arm($("delWallet"),()=>{
+  S.wallets=S.wallets.filter(w=>w.id!==S.active);S.active=S.wallets[0].id;save();render();
+});
+$("list").onclick=e=>{const b=e.target.closest(".del");if(!b)return;const w=W();w.tx=w.tx.filter(t=>String(t.id)!==b.dataset.id);save();render()};
+
+function render(){
+  const w=W();
+  $("wallets").innerHTML=S.wallets.map(x=>`<button class="chip" data-id="${x.id}" aria-pressed="${x.id===w.id}">${esc(x.name)}</button>`).join("")+'<button class="chip new" id="newW" type="button">+ New wallet</button>';
+  $("currency").value=w.currency;
+  $("budget").value=w.budget||"";
+  $("delWallet").disabled=S.wallets.length<2;
+  $("month").textContent=view.toLocaleDateString(undefined,{month:"long",year:"numeric"});
+  const m=ym(view),tx=w.tx.filter(t=>t.date.startsWith(m)).sort((a,b)=>b.date.localeCompare(a.date));
+  const spent=tx.filter(t=>t.type==="exp").reduce((s,t)=>s+t.amount,0);
+  const income=tx.filter(t=>t.type==="inc").reduce((s,t)=>s+t.amount,0);
+  const saved=tx.filter(t=>t.type==="sav").reduce((s,t)=>s+t.amount,0);
+  const totSaved=w.tx.filter(t=>t.type==="sav").reduce((s,t)=>s+t.amount,0);
+  const left=w.budget?w.budget-spent:income-spent-saved;
+  $("left").textContent=fmt(left);
+  $("left").className="left"+(left<0?" over":"");
+  $("spent").textContent=fmt(spent);$("income").textContent=fmt(income);$("saved").textContent=fmt(saved);$("totSaved").textContent=fmt(totSaved);
+  const base=w.budget||income;
+  $("fill").style.width=(base?Math.min(100,spent/base*100):0)+"%";
+  $("fill").className=base&&spent>base?"over":"";
+
+  const by={};tx.filter(t=>t.type==="exp").forEach(t=>by[t.cat]=(by[t.cat]||0)+t.amount);
+  const rows=Object.entries(by).sort((a,b)=>b[1]-a[1]);
+  $("cats").innerHTML=rows.length?rows.map(([c,v])=>`<div class="cat"><div><span>${c}</span><span>${fmt(v)}</span></div><div class="bar"><i style="width:${v/spent*100}%"></i></div></div>`).join(""):'<p class="empty">No spending yet this month. Add an expense above.</p>';
+
+  $("list").innerHTML=tx.length?tx.map(t=>`<li><div class="t"><strong>${esc(t.cat)}</strong><span>${t.date.slice(5)}${t.note?" · "+esc(t.note):""}</span></div><div class="amt ${t.type!=="exp"?"in":""}">${t.type==="inc"?"+":t.type==="sav"?"":"-"}${fmt(t.amount)}</div><button class="del" data-id="${t.id}" aria-label="Delete transaction">&times;</button></li>`).join(""):'<p class="empty">Nothing recorded for this month.</p>';
+}
+const msg=t=>{$("bkMsg").textContent=t};
+const dump=()=>JSON.stringify({app:"budget-tracker",version:1,exported:new Date().toISOString(),data:S},null,1);
+function restore(txt){
+  try{
+    const p=JSON.parse(txt),d=p&&p.data?p.data:p;
+    if(!d||!Array.isArray(d.wallets))throw 0;
+    const ws=d.wallets.filter(w=>w&&typeof w.id==="string"&&typeof w.name==="string"&&Array.isArray(w.tx)).map(w=>({
+      id:w.id,name:w.name,currency:CURS.includes(w.currency)?w.currency:"USD",budget:+w.budget||0,
+      tx:w.tx.filter(t=>t&&t.date&&+t.amount>0&&["exp","inc","sav"].includes(t.type)).map(t=>({id:t.id||Date.now()+Math.random(),type:t.type,amount:+t.amount,cat:String(t.cat||"Other"),note:String(t.note||""),date:String(t.date)}))
+    }));
+    if(!ws.length)throw 0;
+    ws.forEach(w=>{const i=S.wallets.findIndex(x=>x.id===w.id);if(i>=0)S.wallets[i]=w;else S.wallets.push(w)});
+    S.cats=[...new Set([...(S.cats||[]),...(Array.isArray(d.cats)?d.cats.map(String):[])])];
+    save();render();fillCats();
+    msg("Restored "+ws.length+" wallet"+(ws.length>1?"s":"")+".");
+  }catch(e){msg("That isn't a Budget Tracker backup. Check the file or text and try again.")}
+}
+$("exp").onclick=async()=>{
+  let dl=null;
+  try{dl=await claude.use("downloads")}catch(e){}
+  if(dl){
+    try{await dl.save({filename:"budget-backup-"+today()+".json",data:dump()});msg("Backup ready to save.");return}
+    catch(e){if(e&&e.code==="declined"){msg("Export cancelled.");return}}
+  }
+  $("bkBox").hidden=false;$("bk").value=dump();$("bkGo").hidden=true;
+  msg("Downloads aren't available here. Copy this text and keep it somewhere safe.");
+};
+$("impF").onclick=()=>$("file").click();
+$("file").onchange=async e=>{const f=e.target.files[0];if(!f)return;restore(await f.text());e.target.value=""};
+$("impT").onclick=()=>{$("bkBox").hidden=false;$("bkGo").hidden=false;$("bk").value="";$("bk").focus()};
+$("bkGo").onclick=()=>restore($("bk").value);
+render();
+</script>
+</body>
+</html>
