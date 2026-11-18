@@ -361,7 +361,7 @@ if(firebaseConfig.apiKey.startsWith("YOUR_")){
     const p=new GoogleAuthProvider();
     try{await signInWithPopup(auth,p)}
     catch(e){
-      if(e.code==="auth/popup-blocked")signInWithRedirect(auth,p);
+      if(e.code==="auth/popup-blocked")$("authMsg").textContent="Your browser blocked the sign-in window. Open this page in Safari or Chrome (not inside another app) and allow pop-ups, then try again.";
       else if(e.code!=="auth/popup-closed-by-user"&&e.code!=="auth/cancelled-popup-request")$("authMsg").textContent="Sign-in failed ("+(e.code||"error")+"). Check that this domain is authorized in Firebase.";
     }
   };
