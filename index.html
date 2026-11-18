@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Budget Tracker</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#eef2f5;--surface:#fff;--ink:#14212b;--mute:#62727f;--line:#d7e0e6;--accent:#0f766e;--accent-ink:#fff;--bad:#c2410c;--good:#0f766e;
@@ -73,6 +74,7 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius
   <h1>Budget Tracker</h1>
   <p class="sub" style="margin:8px 0 20px">Sign in to keep your wallets private to your account and available on any device.</p>
   <button class="add" id="signin" type="button">Continue with Google</button>
+  <div id="gbtn" style="display:flex;justify-content:center"></div>
   <p class="sub" id="authMsg" role="alert"></p>
   <div class="panel" id="setup" hidden style="text-align:left;margin-top:20px">
     <strong>Setup needed</strong>
@@ -166,7 +168,7 @@ textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius
 
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,onAuthStateChanged,signOut} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,signInWithCredential,onAuthStateChanged,signOut} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {initializeFirestore,getFirestore,persistentLocalCache,doc,getDoc,getDocs,collection,writeBatch} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const CATS=["Housing","Food","Transport","Bills","Fun","Health","Shopping","Other"];
@@ -312,6 +314,9 @@ const firebaseConfig={
   appId:"1:430011471294:web:0da7057c45162febbd55ef"
 };
 
+// Paste the Web client ID from Firebase > Authentication > Sign-in method > Google.
+const googleClientId="430011471294-dmdic57nhn15uvgq8flqgb79q9efdvoi.apps.googleusercontent.com";
+
 let auth,db,uid=null,last={};
 const setStatus=t=>{$("status").textContent=t};
 const show=authed=>{$("auth").hidden=authed;$("app").hidden=!authed};
@@ -356,6 +361,24 @@ if(firebaseConfig.apiKey.startsWith("YOUR_")){
       show(false);
     }
   });
+  if(!googleClientId.startsWith("PASTE_")){
+    $("signin").hidden=true;
+    let tries=0;
+    const timer=setInterval(()=>{
+      tries++;
+      if(window.google&&google.accounts&&google.accounts.id){
+        clearInterval(timer);
+        google.accounts.id.initialize({client_id:googleClientId,callback:async r=>{
+          try{await signInWithCredential(auth,GoogleAuthProvider.credential(r.credential))}
+          catch(e){$("authMsg").textContent="Sign-in failed ("+(e.code||"error")+")."}
+        }});
+        google.accounts.id.renderButton($("gbtn"),{theme:"outline",size:"large",shape:"pill",text:"continue_with",width:280});
+      }else if(tries>50){
+        clearInterval(timer);$("signin").hidden=false;
+        $("authMsg").textContent="Couldn't load Google sign-in. Check your connection and reload.";
+      }
+    },200);
+  }
   $("signin").onclick=async()=>{
     $("authMsg").textContent="";
     const p=new GoogleAuthProvider();
