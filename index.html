@@ -172,7 +172,7 @@ import {initializeFirestore,getFirestore,persistentLocalCache,doc,getDoc,getDocs
 const CATS=["Housing","Food","Transport","Bills","Fun","Health","Shopping","Other"];
 const INCOME_CATS=["Salary","Allowances","Gifts"];
 const SAV_CATS=["Emergency fund","Goal","Retirement","Other savings"];
-const CURS=["USD","MMK","EUR","GBP","JPY","INR","CAD","AUD","CHF","CNY","THB","SGD","MXN","BRL","NGN","ZAR","KES","AED","SEK","TRY"];
+const CURS=["USD","MMK","PHP","ILS","EUR","GBP","JPY","INR","CAD","AUD","CHF","CNY","THB","SGD","MXN","BRL","NGN","ZAR","KES","AED","SEK","TRY"];
 const KEY="budget-tracker-v1";
 const $=id=>document.getElementById(id);
 const mk=(name,cur)=>({id:"w"+Date.now()+Math.floor(Math.random()*1e4),name,currency:cur,budget:0,tx:[]});
